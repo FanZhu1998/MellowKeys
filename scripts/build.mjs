@@ -1,0 +1,14 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import {build} from 'esbuild';
+import {buildClient} from './build-client.mjs';
+const root=process.cwd(),output=path.resolve(root,'dist');
+if(path.dirname(output)!==root)throw Error('Unsafe build output path');
+await fs.rm(output,{recursive:true,force:true});
+await fs.mkdir(output+'/client',{recursive:true});await fs.mkdir(output+'/server',{recursive:true});await fs.mkdir(output+'/.openai',{recursive:true});
+await buildClient(output+'/client');
+await build({entryPoints:['server/worker.js'],outfile:output+'/server/index.js',bundle:true,format:'esm',platform:'browser',target:'es2022'});
+const hosting=await fs.readFile('.openai/hosting.json').catch(()=>fs.readFile('.openai/hosting.example.json'));
+await fs.writeFile(output+'/.openai/hosting.json',hosting);
+await fs.cp('drizzle',output+'/.openai/drizzle',{recursive:true});
+console.log('Built client, Worker, notation fonts, and database migrations.');

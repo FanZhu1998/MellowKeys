@@ -1,0 +1,15 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import {execFileSync} from 'node:child_process';
+const destination=path.resolve(process.argv[2]||'');
+if(!process.argv[2]||destination===process.cwd())throw Error('Choose a new, empty export directory.');
+const existing=await fs.readdir(destination).catch(error=>{if(error.code==='ENOENT')return [];throw error;});
+if(existing.length)throw Error('Export directory must be empty; existing work will not be overwritten.');
+await fs.mkdir(destination,{recursive:true});
+const entries=['public','server','desktop','scripts','tests','db','drizzle','docs','.github','package.json','package-lock.json','drizzle.config.ts','README.md','SECURITY.md','THIRD_PARTY_NOTICES.md','CHANGELOG.md','LICENSE','.gitignore'];
+for(const entry of entries)await fs.cp(entry,path.join(destination,entry),{recursive:true});
+await fs.mkdir(path.join(destination,'.openai'),{recursive:true});
+await fs.copyFile('.openai/hosting.example.json',path.join(destination,'.openai/hosting.example.json'));
+await fs.appendFile(path.join(destination,'.gitignore'),'\n# Private deployment binding; use hosting.example.json as a template.\n.openai/hosting.json\n');
+execFileSync(process.execPath,[path.join(destination,'scripts/security-scan.mjs'),destination],{stdio:'inherit'});
+console.log('Clean source export ready: '+destination);
